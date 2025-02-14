@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Single Elimination Tournament Bracket</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        .tournament-bracket {
+            display: flex;
+            overflow-x: auto;
+            white-space: nowrap;
+            padding-bottom: 20px;
+        }
+        .round {
+            display: flex;
+            flex-direction: column;
+            min-width: 200px;
+            margin-right: 40px;
+        }
+        .match {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 10px 0;
+            padding: 10px;
+            position: relative;
+            height: 80px; /* Fixed height for consistency */
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .team {
+            display: flex;
+            align-items: center;
+            padding: 5px;
+        }
+        .team input[type="text"] {
+            flex-grow: 1;
+            border: none;
+            padding: 5px;
+            margin-right: 5px;
+        }
+        .team input[type="checkbox"] {
+            margin-left: 5px;
+        }
+        .winner {
+            background-color: #e6ffe6;
+        }
+        .connector {
+            position: absolute;
+            right: -40px;
+            top: 50%;
+            width: 40px;
+            height: 2px;
+            background-color: #999;
+        }
+        .connector::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: -4px;
+            width: 0;
+            height: 0;
+            border-left: 5px solid #999;
+            border-top: 5px solid transparent;
+            border-bottom: 5px solid transparent;
+        }
+        h2, h3 {
+            text-align: center;
+            color: #333;
+        }
+        #customizeForm {
+            margin-bottom: 20px;
+        }
+        #customizeForm input, #customizeForm button {
+            margin: 5px;
+            padding: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Single Elimination Tournament Bracket</h1>
+    
+    <form id="customizeForm">
+        <input type="number" id="contenderCount" min="2" max="300" value="128" placeholder="Number of contenders">
+        <input type="text" id="tournamentName" placeholder="Tournament Name">
+        <button type="submit">Generate Bracket</button>
+    </form>
+
+    <div id="tournamentContainer"></div>
+
+    <script>
+        function generateBracket(contenderCount, tournamentName) {
+            const roundCount = Math.ceil(Math.log2(contenderCount));
+            let html = `<h2>${tournamentName || 'Tournament Bracket'}</h2>`;
+            html += '<div class="tournament-bracket">';
+
+            for (let round = 1; round <= roundCount; round++) {
+                const matchesInRound = Math.pow(2, roundCount - round);
+                html += `<div class="round" id="round${round}">`;
+                html += `<h3>Round ${round}</h3>`;
+
+                for (let match = 1; match <= matchesInRound; match++) {
+                    html += `
+                        <div class="match" id="match-${round}-${match}">
+                            <div class="team">
+                                <input type="text" placeholder="Team/Player Name">
+                                <input type="checkbox" class="winner-checkbox">
+                            </div>
+                            <div class="team">
+                                <input type="text" placeholder="Team/Player Name">
+                                <input type="checkbox" class="winner-checkbox">
+                            </div>
+                            ${round < roundCount ? '<div class="connector"></div>' : ''}
+                        </div>
+                    `;
+                }
+
+                html += '</div>';
+            }
+
+            html += '</div>';
+            document.getElementById('tournamentContainer').innerHTML = html;
+
+            // Add event listeners to handle winner selection
+            document.querySelectorAll('.match').forEach(match => {
+                const checkboxes = match.querySelectorAll('.winner-checkbox');
+                checkboxes.forEach(checkbox => {
+                    checkbox.addEventListener('change', function() {
+                        if (this.checked) {
+                            checkboxes.forEach(cb => {
+                                if (cb !== this) cb.checked = false;
+                            });
+                            this.closest('.team').classList.add('winner');
+                            this.closest('.team').nextElementSibling?.classList.remove('winner');
+                            this.closest('.team').previousElementSibling?.classList.remove('winner');
+                            advanceWinner(match, this.closest('.team').querySelector('input[type="text"]').value);
+                        } else {
+                            this.closest('.team').classList.remove('winner');
+                        }
+                    });
+                });
+            });
+        }
+
+        function advanceWinner(match, winnerName) {
+            const [round, matchNumber] = match.id.split('-').slice(1).map(Number);
+            if (round < document.querySelectorAll('.round').length) {
+                const nextRound = round + 1;
+                const nextMatchNumber = Math.ceil(matchNumber / 2);
+                const nextMatch = document.getElementById(`match-${nextRound}-${nextMatchNumber}`);
+                const nextMatchInputs = nextMatch.querySelectorAll('input[type="text"]');
+                nextMatchInputs[matchNumber % 2 === 1 ? 0 : 1].value = winnerName;
+            }
+        }
+
+        document.getElementById('customizeForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const contenderCount = parseInt(document.getElementById('contenderCount').value);
+            const tournamentName = document.getElementById('tournamentName').value;
+            generateBracket(contenderCount, tournamentName);
+        });
+
+        // Initial generation
+        generateBracket(128, 'Tournament Bracket');
+    </script>
+</body>
+</html>
